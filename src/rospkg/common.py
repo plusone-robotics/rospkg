@@ -49,10 +49,10 @@ class ResourceNotFound(Exception):
         """
         :type deps_sofar: [str]
         :param deps_sofar: List of depended packages at the time the command
-                                        stopped due to this exception.
+                           stopped due to this exception.
         :type deps_unavailable: [str]
         :param deps_unavailable: List of packages defined in the dependency but are not
-                                                  available on the platform.
+                                 available on the platform.
         """
         super(ResourceNotFound, self).__init__(msg)
         self.ros_paths = ros_paths
