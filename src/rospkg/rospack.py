@@ -34,6 +34,7 @@ from collections import defaultdict
 import os
 from threading import Lock
 from xml.etree.cElementTree import ElementTree
+import yaml
 
 from .common import MANIFEST_FILE, PACKAGE_FILE, ResourceNotFound, STACK_FILE
 from .environment import get_ros_paths
@@ -380,10 +381,39 @@ class ManifestManager(object):
                 license_dict[pkgname].append(license_name)
             else:
                 license_dict[license_name].append(pkgname)
-        return license_dict.items()
+        licenses = license_dict.items()
+        return dict(licenses)
 
     def set_custom_cache(self, key, value):
         self._custom_cache[key] = value
+
+    def save_licenses(
+            self, pkgname, implicit=True, sortbylicense=True,
+            prefix_outfile="/tmp/licenses",):
+        """
+        @summary:  If True save the result of get_licenses to a text file.
+        @param pkgname: Root package for license introspection.
+        @param implicit: Same as the one in get_depends
+        @param sortbylicense: Same as the one in get_licenses
+        @param prefix_outfile: Prefix of the output file in an absolute full path style.
+                                              E.g. by default output of pkgA version 1.0.0 will be saved at:
+                                                   /tmp/licenses_pkgA-1.0.0.log
+        @return 1) License object, 2) Path of the resulted file (either absolute/relative
+                       depending on the prefix_outfile)
+        @raise ResourceNotFound
+        """
+        if not pkgname == 0:
+            ValueError("Argument was insufficient: pkgname {}".format(pkgname))
+        licenses = self.get_licenses(pkgname, implicit, sortbylicense)
+        pkg_version = "pkgversion"
+        try:
+            pkg_version = self.get_manifest(pkgname).version
+        except Exception as e:
+            print(str(e))
+        path_outputfile = '{}_{}-{}.yml'.format(prefix_outfile, pkgname, pkg_version)
+        with open(path_outputfile, 'w') as outfile:
+            yaml.dump(licenses, outfile, default_flow_style=False)
+        return licenses, path_outputfile
 
 
 class RosPack(ManifestManager):
