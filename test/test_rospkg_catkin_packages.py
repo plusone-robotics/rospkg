@@ -67,3 +67,28 @@ def test_get_licenses():
     # package foo declares these 2 licenses in separate tags, which the dict
     # get_licenses returns contains as a single string.
     assert("BSD, LGPL" in licenses)
+
+
+def test_get_rosdeps_rsc_nonexistent():
+    """
+    @summary: get_rosdeps needs to raise rospkg.ResourceNotFound every time
+                          a non-existent package is passed.
+    """
+    search_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), 'catkin_package_tests'))
+    manager = rospkg.rospack.RosPack(ros_paths=[search_path])
+    # Need to run get_rosdeps twice and both must raise the same exception.
+    # https://github.com/ros-infrastructure/rospkg/pull/129#issue-168007083
+    try:  # 1st run
+        manager.get_rosdeps("pkg_nonexistent")
+    except rospkg.ResourceNotFound as e:
+        pass
+
+    try:  # 2nd run
+        manager.get_rosdeps("pkg_nonexistent")
+    except rospkg.ResourceNotFound as e:
+        pass
+    else:
+        print("ResourceNotFound expected but wasn't raised. Failure.")
+        assert(False)
+
