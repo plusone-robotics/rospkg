@@ -348,72 +348,8 @@ class ManifestManager(object):
     def get_custom_cache(self, key, default=None):
         return self._custom_cache.get(key, default)
 
-    def get_licenses(self, name, implicit=True, sortbylicense=True):
-        """
-        @summary: Return a list of licenses the packages the given package declares
-                             dependency on.
-        @return Dictionary. By default dict of license name and package name(s).
-                       Note: For the packages that declare multiple licenses, those licenses
-                       are returned in a single string with each license separated by comma.
-                       E.g. if your package declares BSD and LGPL in separate tags in
-                       package.xml, the returned key will look like "BSD, LGPL".
-        @rtype { k, [d] }
-        @raise ResourceNotFound
-        """
-        license_dict = defaultdict(list)
-        license_list = []
-
-        # Unlike get_depends, the licenses of the given package itself needs added.
-        manifest_self = self.get_manifest(name)
-        license_list.append((name, manifest_self.license))
-
-        # Get licenses from depended packages
-        try:
-            pkgnames_dep = self.get_depends(name, implicit)
-        except ResourceNotFound as e:
-            raise e
-        for pkgname_dep in pkgnames_dep:
-            manifest = self.get_manifest(pkgname_dep)
-            license_list.append((pkgname_dep, manifest.license))
-
-        for pkgname, license_name in license_list:
-            if not sortbylicense:
-                license_dict[pkgname].append(license_name)
-            else:
-                license_dict[license_name].append(pkgname)
-        licenses = license_dict.items()
-        return dict(licenses)
-
     def set_custom_cache(self, key, value):
         self._custom_cache[key] = value
-
-    def save_licenses(
-            self, pkgname, implicit=True, sortbylicense=True,
-            prefix_outfile="/tmp/licenses",):
-        """
-        @summary:  If True save the result of get_licenses to a text file.
-        @param pkgname: Root package for license introspection.
-        @param implicit: Same as the one in get_depends
-        @param sortbylicense: Same as the one in get_licenses
-        @param prefix_outfile: Prefix of the output file in an absolute full path style.
-                                              E.g. by default output of pkgA version 1.0.0 will be saved at:
-                                                   /tmp/licenses_pkgA-1.0.0.log
-        @return 1) License object, 2) Path of the resulted file (either absolute/relative
-                       depending on the prefix_outfile)
-        @raise ResourceNotFound
-        """
-        if not pkgname == 0:
-            ValueError("Argument was insufficient: pkgname {}".format(pkgname))
-        licenses = self.get_licenses(pkgname, implicit, sortbylicense)
-        pkg_version = "pkgversion"
-        try:
-            pkg_version = self.get_manifest(pkgname).version
-        except Exception as e:
-            print(str(e))
-        path_outputfile = '{}_{}-{}.yml'.format(prefix_outfile, pkgname, pkg_version)
-        with open(path_outputfile, 'w') as outfile:
-            yaml.dump(licenses, outfile, default_flow_style=False)
-        return licenses, path_outputfile
 
 
 class RosPack(ManifestManager):
@@ -508,6 +444,70 @@ class RosPack(ManifestManager):
                 return os.path.basename(d)
             else:
                 d = os.path.dirname(d)
+
+    def get_licenses(self, name, implicit=True, sortbylicense=True):
+        """
+        @summary: Return a list of licenses the packages the given package declares
+                             dependency on.
+        @return Dictionary. By default dict of license name and package name(s).
+                       Note: For the packages that declare multiple licenses, those licenses
+                       are returned in a single string with each license separated by comma.
+                       E.g. if your package declares BSD and LGPL in separate tags in
+                       package.xml, the returned key will look like "BSD, LGPL".
+        @rtype { k, [d] }
+        @raise ResourceNotFound
+        """
+        license_dict = defaultdict(list)
+        license_list = []
+
+        # Unlike get_depends, the licenses of the given package itself needs added.
+        manifest_self = self.get_manifest(name)
+        license_list.append((name, manifest_self.license))
+
+        # Get licenses from depended packages
+        try:
+            pkgnames_dep = self.get_depends(name, implicit)
+        except ResourceNotFound as e:
+            raise e
+        for pkgname_dep in pkgnames_dep:
+            manifest = self.get_manifest(pkgname_dep)
+            license_list.append((pkgname_dep, manifest.license))
+
+        for pkgname, license_name in license_list:
+            if not sortbylicense:
+                license_dict[pkgname].append(license_name)
+            else:
+                license_dict[license_name].append(pkgname)
+        licenses = license_dict.items()
+        return dict(licenses)
+
+    def save_licenses(
+            self, pkgname, implicit=True, sortbylicense=True,
+            prefix_outfile="/tmp/licenses",):
+        """
+        @summary:  If True save the result of get_licenses to a text file.
+        @param pkgname: Root package for license introspection.
+        @param implicit: Same as the one in get_depends
+        @param sortbylicense: Same as the one in get_licenses
+        @param prefix_outfile: Prefix of the output file in an absolute full path style.
+                                              E.g. by default output of pkgA version 1.0.0 will be saved at:
+                                                   /tmp/licenses_pkgA-1.0.0.log
+        @return 1) License object, 2) Path of the resulted file (either absolute/relative
+                       depending on the prefix_outfile)
+        @raise ResourceNotFound
+        """
+        if not pkgname == 0:
+            ValueError("Argument was insufficient: pkgname {}".format(pkgname))
+        licenses = self.get_licenses(pkgname, implicit, sortbylicense)
+        pkg_version = "pkgversion"
+        try:
+            pkg_version = self.get_manifest(pkgname).version
+        except Exception as e:
+            print(str(e))
+        path_outputfile = '{}_{}-{}.yml'.format(prefix_outfile, pkgname, pkg_version)
+        with open(path_outputfile, 'w') as outfile:
+            yaml.dump(licenses, outfile, default_flow_style=False)
+        return licenses, path_outputfile
 
 
 class RosStack(ManifestManager):

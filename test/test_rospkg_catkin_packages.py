@@ -85,7 +85,7 @@ def test_get_rosdeps_rsc_nonexistent():
 
 def test_get_licenses():
     search_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'catkin_package_tests'))
-    manager = rospkg.rospack.ManifestManager(rospkg.common.MANIFEST_FILE, ros_paths=[search_path])
+    manager = rospkg.rospack.RosPack(ros_paths=[search_path])
     licenses = manager.get_licenses("foo", implicit=False)
     # package foo declares these 2 licenses in separate tags, which the dict
     # get_licenses returns contains as a single string.
