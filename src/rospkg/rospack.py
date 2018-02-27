@@ -473,6 +473,15 @@ class RosPack(ManifestManager):
             manifest = self.get_manifest(pkgname_dep)
             license_list.append((pkgname_dep, manifest.license))
 
+        # Traverse for Non-ROS, system packages
+        try:
+            pkgnames_rosdep = self.get_rosdeps(name, implicit)
+        except ResourceNotFound as e:
+            raise e
+        for pkgname_rosdep in pkgnames_rosdep:
+            license_list.append((
+                pkgname_rosdep, "(System package. License not automatically detected)"))
+
         for pkgname, license_name in license_list:
             if not sortbylicense:
                 license_dict[pkgname].append(license_name)
