@@ -30,7 +30,7 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import os
 from threading import Lock
 from xml.etree.cElementTree import ElementTree
@@ -487,7 +487,18 @@ class RosPack(ManifestManager):
                 license_dict[pkgname].append(license_name)
             else:
                 license_dict[license_name].append(pkgname)
-        licenses = license_dict.items()
+        # Sort pkg names in each license
+        for list_key in license_dict.values():
+            list_key.sort()
+        # Sort by license name.
+        licenses = OrderedDict(sorted(license_dict.items()))
+
+        # List of tuples converted into yaml can look like the following, which isn't 
+        # that useful. So here converting to a dict.
+        # - !!python/tuple
+        #  - LGPL
+        #   - - python_orocos_kdl
+        #     - orocos_kdl
         return dict(licenses)
 
     def save_licenses(
