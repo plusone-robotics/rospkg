@@ -28,33 +28,31 @@
 
 
 import argparse
+import logging
+import sys
 
-from rospkg import RosPack
+from rospkg import sw_license
+
+PATH_PREFIX_OUTPUT = "/tmp/licenses"
 
 if __name__ == "__main__":
-    """    
-    """
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description=
-                                     "List the licenses of all ROS dependency for the given package..")
-    parser.add_argument("pkg_name",
-                        help="Name of the package you want to get the all licenses of.")
-    parser.add_argument("--implicit",
-                        help="If True licenses from the implicit dependencies are sought "
-                        "(i.e. non-immediate dependencies).",
-                        default="True")
-    parser.add_argument("--sortbylicense",
-                        help="If False, the result will be sorted per package name.",
-                        default="True")
-    parser.add_argument("--prefix_savefile",
-                        help="Prefix of the output file in an absolute full path style "
-                        "(default /tmp/licenses). Either absolute or relative path can be passed",
-                        default="/tmp/licenses")
+                                     'List the OSS licenses of all ROS dependency for the given package.')
+    parser.add_argument(
+        'pkg_name', help='Package that starts tracking from to get the all licenses of.')
+    parser.add_argument(
+        '--path_licenses_prev',
+        help="Path of a file to be compared from. Run comparison if this is passed.")
+    parser.add_argument(
+        '--prefix_outfile', help='Prefix of the output file in an absolute path.'
+        ' By default it is {}'.format(PATH_PREFIX_OUTPUT),
+        default="{}".format(PATH_PREFIX_OUTPUT))
     args = parser.parse_args()
-
-    rp = RosPack()
-    licenses, filepath = rp.save_licenses(
-        args.pkg_name, args.implicit, args.sortbylicense, args.prefix_savefile)
-    with open(filepath) as f:
-        for line in f:
-            print(line.rstrip())
-    print("License result is saved in {}".format(filepath))
+    path_licenses = sw_license.oss_license(args.pkg_name, args.prefix_outfile)
+    print("Path of the output file: {}".format(path_licenses))
+    if args.path_licenses_prev:
+        ret = sw_license.compare_license(args.path_licenses_prev, path_licenses)
+        if not ret:
+            logging.error("New license found. Exiting with 1.")
+            sys.exit(1)
