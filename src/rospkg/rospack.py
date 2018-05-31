@@ -470,7 +470,12 @@ class RosPack(ManifestManager):
         except ResourceNotFound as e:
             raise e
         for pkgname_dep in pkgnames_dep:
-            manifest = self.get_manifest(pkgname_dep)
+            try:
+                manifest = self.get_manifest(pkgname_dep)
+            except ResourceNotFound as e:
+                # Pkg not found in ROS_PACKAGE_PATH is skipped.
+                print(repr(e))
+                continue
             license_list.append((pkgname_dep, manifest.license))
 
         # Traverse for Non-ROS, system packages
