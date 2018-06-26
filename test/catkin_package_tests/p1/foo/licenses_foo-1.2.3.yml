@@ -1,0 +1,19 @@
+(System package. License not automatically detected):
+- google-mock
+- gtest
+- python-argparse
+Apache-2.0 BSD-2-clause BSD-3-clause BSD-4-clause GPL-2+with_exception GPL-3+with_exception ISC MIT-like zlib:
+- cmake
+BSD:
+- catkin
+- genmsg
+BSD, LGPL:
+- foo
+BSD-3-clause:
+- python-mock
+Expat LGPL public-domain:
+- python-nose
+GPL LGPL:
+- python-empy
+unknown:
+- python-catkin-pkg
