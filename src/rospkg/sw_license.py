@@ -51,6 +51,9 @@ class LicenseUtil(object):
         """
         @summary Compare 2 files of license output and returns any new license entries.
         """
+        if not (path_licensefile_new and path_licensefile_prev):
+            raise ValueError(
+                "Check both 2 paths are passed. What are passed: \n- path_licensefile_new: {}\n- path_licensefile_prev: {}".format(path_licensefile_new, path_licensefile_prev))
         ret = True
         stream_a = open(path_a, "r")
         yaml_a = yaml.load_all(stream_a)
