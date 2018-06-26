@@ -38,8 +38,11 @@ import rospkg
 
 
 def test_compare_license():
+    from rospkg import sw_license
     search_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'catkin_package_tests'))
-    manager = rospkg.sw_license.LicenseUtil(ros_paths=[search_path])
-    licenses = manager.software_license("foo")
-    path_outputfile = manager.save_licenses(licenses, "foo")
-    manager.compare_license("{}/licenses_foo-1.2.3.yml".format(search_path), path_outputfile)
+    manager = sw_license.LicenseUtil(ros_paths=[search_path])
+    dict_result = [("baa", "licenses_baa-0.1.2.yml")]
+    for res in dict_result:
+        licenses = manager.software_license(res[0])
+        path_outputfile = manager.save_licenses(licenses, res[0])
+        assert(manager.compare_license(path_outputfile, "{}/p1/{}/{}".format(search_path, res[0], res[1])))
