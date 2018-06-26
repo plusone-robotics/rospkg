@@ -186,4 +186,4 @@ class LicenseUtil(object):
             outfile.write("{}\n".format(output_header))
             yaml.dump(licenses, outfile, default_flow_style=False, allow_unicode=True)
             logging.debug("Result saved at {}".format(path_outputfile))
-        return licenses, path_outputfile
+        return path_outputfile
