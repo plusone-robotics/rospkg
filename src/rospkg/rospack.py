@@ -32,6 +32,9 @@
 
 from collections import defaultdict, OrderedDict
 import os
+import platform
+import shutil
+import subprocess
 from threading import Lock
 
 try:
@@ -41,7 +44,7 @@ except ImportError:
 
 from .common import MANIFEST_FILE, PACKAGE_FILE, ResourceNotFound, STACK_FILE
 from .environment import get_ros_paths
-from .manifest import InvalidManifest, parse_manifest_file
+from .manifest import InvalidManifest, Manifest, parse_manifest_file
 from .stack import InvalidStack, parse_stack_file
 
 _cache_lock = Lock()
@@ -235,19 +238,43 @@ class ManifestManager(object):
             if name in self._depends_cache:
                 return self._depends_cache[name]
 
-            # take the union of all dependencies
-            names = [p.name for p in self.get_manifest(name).depends]
-
             # assign key before recursive call to prevent infinite case
             self._depends_cache[name] = s = set()
 
+            depends_unavailable = set()
+
+            # take the union of all dependencies
+            names = None
+            try:
+                names = [p.name for p in self.get_manifest(name).depends]
+            except ResourceNotFound as e:
+                del self._depends_cache[name]
+                e.deps_unavailable.add(name)
+                raise e
+
             for p in names:
-                s.update(self.get_depends(p, implicit))
+                deps = None
+                try:
+                    deps = self.get_depends(p, implicit)
+                except ResourceNotFound as e:
+                    deps = e.get_depends()
+                    depends_unavailable.update(e.deps_unavailable)
+                if deps:
+                    s.update(deps)
             # add in our own deps
             s.update(names)
             # cache the return value as a list
             s = list(s)
             self._depends_cache[name] = s
+            if 0 < len(depends_unavailable) or 0 == len(s):
+                raise ResourceNotFound(
+                    "Pkg(s) {0} not available on your environment.\n"
+                    "Defined dependency can be obtained in "
+                    "ResourceNotFound.get_depends: {1}".format(
+                        list(depends_unavailable), s),
+                    ros_paths=self._ros_paths,
+                    deps_sofar=s,
+                    deps_unavailable=depends_unavailable)
             return s
 
     def get_depends_on(self, name, implicit=True):
@@ -369,9 +396,18 @@ class RosPack(ManifestManager):
         self._rosdeps_cache[package] = s = set()
 
         # take the union of all dependencies
-        packages = self.get_depends(package, implicit=True)
-        for p in packages:
-            s.update(self.get_rosdeps(p, implicit=False))
+        packages = []
+        try:
+            packages = self.get_depends(package, implicit=True)
+        except ResourceNotFound as e:
+            del self._rosdeps_cache[package]
+            packages = e.get_depends()
+        if packages:
+            for p in packages:
+                try:
+                    s.update(self.get_rosdeps(p, implicit=False))
+                except ResourceNotFound as e:
+                    print("Not available in your environment: {}".format(str(e)))
         # add in our own deps
         m = self.get_manifest(package)
         s.update([d.name for d in m.rosdeps])
@@ -412,10 +448,29 @@ class RosPack(ManifestManager):
             for license in manifest.licenses:
                 license_dict[license].append(p_name)
 
+        for pkg_name, manifest in manifests.items():
+            if not sortbylicense:
+                license_dict[pkg_name].append(manifest.license)
+            else:
+                license_dict[manifest.license].append(pkg_name)
+
         # Traverse for Non-ROS, system packages
-        pkgnames_rosdep = self.get_rosdeps(package=pkg_name, implicit=implicit)
-        for pkgname_rosdep in pkgnames_rosdep:
-            license_dict[self.LICENSE_NOT_FOUND].append(pkgname_rosdep)
+        try:
+            pkgnames_rosdep = self.get_rosdeps(name, implicit)
+        except ResourceNotFound as e:
+            raise e
+        if platform.linux_distribution()[0] == "Ubuntu":
+            manifests_systempkg = self.get_manifests_ubuntu(pkgnames_rosdep)
+            for pkgname_rosdep in pkgnames_rosdep:
+                syspkg_dict = filter(lambda syspkg: syspkg["name"] == pkgname_rosdep, manifests_systempkg)
+                if syspkg_dict:
+                    license_syspkg = syspkg_dict[0]["manifest"].license
+                else:
+                    license_syspkg = MSG_LICENSE_NOTFOUND_SYSPKG
+                if not sortbylicense:
+                    license_dict[pkgname_rosdep].append(license_syspkg)
+                else:
+                    license_dict[license_syspkg].append(pkgname_rosdep)
 
         # Sort pkg names within the set of pkgs with  each license
         for list_key in license_dict.values():
@@ -423,6 +478,55 @@ class RosPack(ManifestManager):
         # Sort licenspe names
         licenses = OrderedDict(sorted(license_dict.items()))
         return licenses
+
+    def get_manifests_ubuntu(self, pkg_names=None):
+        """
+        @summary: Temporarily proof of concept method to get a list of system packages
+                             on Ubuntu.
+        @type pkg_names: [str]
+        @rtype: [{str: rospkg.manifest.Manifest}]
+        """
+        #URL_DPKGLICENSE = "https://github.com/daald/dpkg-licenses.git"
+        DELIMITER_DPKG_LINE = ";"
+        URL_DPKGLICENSE = "https://github.com/130s/dpkg-licenses.git"
+        manifests_syspkg = []
+
+        # Get dpkg-licenses from github.com.
+        os.chdir("/tmp")
+        REPO_DIR_NAME = "dpkg-licenses"
+        if os.path.exists(REPO_DIR_NAME):
+            shutil.rmtree(REPO_DIR_NAME)
+        subprocess.call(["git", "clone", URL_DPKGLICENSE, "-b", "hack_output"])
+        os.chdir("dpkg-licenses")
+
+        ## Save the stdout of licenses script to the memory.
+        ## Better saving stdout directly to memory than generating a file.
+        #
+        ## https://stackoverflow.com/questions/4514751/pipe-subprocess-standard-output-to-a-variable
+        dpkg_out_lines = []
+        proc = subprocess.Popen("./dpkg-licenses", stdout=subprocess.PIPE)
+        while True:
+            line = proc.stdout.readline()
+            if line:
+                dpkg_out_lines.append(line.rstrip())
+            else:
+                break
+
+        # Parse the dpkg output to return a list of manifest for the sys pkgs.
+        for line in dpkg_out_lines:
+            syspkg_name = line.split(DELIMITER_DPKG_LINE)[1].strip()
+            if (pkg_names and syspkg_name not in pkg_names):
+                continue
+            mani = Manifest()
+            mani.is_catkin = False
+            mani.name = syspkg_name
+            mani.version = line.split(DELIMITER_DPKG_LINE)[2].strip()
+            mani.description = line.split(DELIMITER_DPKG_LINE)[4].strip()
+            mani.license = line.split(DELIMITER_DPKG_LINE)[5].strip()
+
+            manifests_syspkg.append({"name": syspkg_name, "manifest": mani})
+
+        return manifests_syspkg
 
 
 class RosStack(ManifestManager):

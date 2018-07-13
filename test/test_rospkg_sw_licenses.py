@@ -1,6 +1,6 @@
 # Software License Agreement (BSD License)
 #
-# Copyright (c) 2011, Willow Garage, Inc.
+# Copyright 2018 PlusOne Robotics Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #    copyright notice, this list of conditions and the following
 #    disclaimer in the documentation and/or other materials provided
 #    with the distribution.
-#  * Neither the name of Willow Garage, Inc. nor the names of its
+#  * Neither the name of Plus One Robotics, Inc. nor the names of its
 #    contributors may be used to endorse or promote products derived
 #    from this software without specific prior written permission.
 #
@@ -30,43 +30,19 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Common definitions for rospkg modules.
-"""
+from __future__ import print_function
 
-MANIFEST_FILE = 'manifest.xml'
-PACKAGE_FILE = 'package.xml'
-STACK_FILE = 'stack.xml'
-ROS_STACK = 'ros'
+import os
+
+import rospkg
 
 
-class ResourceNotFound(Exception):
-    """
-    A ROS filesystem resource was not found.
-    """
-
-    def __init__(self, msg, ros_paths=None, deps_sofar=None, deps_unavailable=None):
-        """
-        :type deps_sofar: [str]
-        :param deps_sofar: List of depended packages at the time the command
-                           stopped due to this exception.
-        :type deps_unavailable: [str]
-        :param deps_unavailable: List of packages defined in the dependency but are not
-                                 available on the platform.
-        """
-        super(ResourceNotFound, self).__init__(msg)
-        self.ros_paths = ros_paths
-        self.deps_sofar = deps_sofar
-        self.deps_unavailable = set()
-        if deps_unavailable:
-            self.deps_unavailable.update(deps_unavailable)
-
-    def __str__(self):
-        s = self.args[0]  # python 2.6
-        if self.ros_paths:
-            for i, p in enumerate(self.ros_paths):
-                s = s + '\nROS path [%s]=%s' % (i, p)
-        return s
-
-    def get_depends(self):
-        return self.deps_sofar
+def test_compare_license():
+    from rospkg import sw_license
+    search_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'catkin_package_tests'))
+    manager = sw_license.LicenseUtil(ros_paths=[search_path])
+    dict_result = [("baa", "licenses_baa-0.1.2.yml")]
+    for res in dict_result:
+        licenses = manager.software_license(res[0])
+        path_outputfile = manager.save_licenses(licenses, res[0])
+        assert(manager.compare_license(path_outputfile, "{}/p1/{}/{}".format(search_path, res[0], res[1])))
