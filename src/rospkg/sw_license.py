@@ -47,7 +47,8 @@ class LicenseUtil(object):
         self.rp = RosPack()
         self._os_detect = OsDetect()
 
-    def compare_license(self, path_a="", path_b=""):
+    def compare_license(self, path_licensefile_new, path_licensefile_prev):
+
         """
         @summary Compare 2 files of license output and returns any new license entries.
         """
@@ -55,10 +56,10 @@ class LicenseUtil(object):
             raise ValueError(
                 "Check both 2 paths are passed. What are passed: \n- path_licensefile_new: {}\n- path_licensefile_prev: {}".format(path_licensefile_new, path_licensefile_prev))
         ret = True
-        stream_a = open(path_a, "r")
+        stream_a = open(path_licensefile_new, "r")
         yaml_a = yaml.load_all(stream_a)
 
-        stream_b = open(path_b, "r")
+        stream_b = open(path_licensefile_prev, "r")
         yaml_b = yaml.load_all(stream_b)
 
         # PyYaml doesn't preserve order of input yaml, so this is needed.
