@@ -42,15 +42,18 @@ from rospkg.os_detect import OsDetect
 
 class LicenseUtil(object):
     _URL_ISSUE_RELEVANT = "https://github.com/ros-infrastructure/rospkg/pull/129#issue-168007083"
+    PROTECTED_LICENSES = ["affero", "gpl", "lgpl", "mpl"]
 
     def __init__(self):
         self.rp = RosPack()
         self._os_detect = OsDetect()
 
-    def compare_license(self, path_licensefile_new, path_licensefile_prev):
+    def compare_license(self, path_licensefile_new, path_licensefile_prev, protective_licenses=PROTECTED_LICENSES):
 
         """
         @summary Compare 2 files of license output and returns any new license entries.
+        @param protective_licenses: List of protected licenses. If any of these is not found in the given list of licenses 
+            (in the file passed via path_licensefile_prev), error returns.
         """
         if not (path_licensefile_new and path_licensefile_prev):
             raise ValueError(
@@ -72,10 +75,13 @@ class LicenseUtil(object):
         # - Values
         for key in ordered_a:
             if key not in ordered_b:
-                logging.error("License '{}' was NOT present in the input file.".format(key))
-                ret = False
+                for protected_license in protective_licenses:
+                    if key.upper() in protected_license:
+                        logging.error("Non-permissive license '{}' found and was NOT present in the input file.".format(key))
+                        ret = False
+                        break
             else:
-                logging.info("License '{}' was present.".format(key))
+                logging.info("License '{}' was present in the given file.".format(key))
         return ret
 
     def software_license(self, pkgnames):

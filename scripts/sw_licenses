@@ -48,6 +48,8 @@ if __name__ == "__main__":
         '--prefix_outfile', help='Prefix of the output file in an absolute path.'
         ' By default it is {}'.format(PATH_PREFIX_OUTPUT),
         default="{}".format(PATH_PREFIX_OUTPUT))
+    parser.add_argument(
+        '--licenses_alert', help="List of licenses on alert. If any of these is not found in the given list of licenses (in the file passed via path_licensefile_prev), error returns. Delimit entries by comma and enclose the entire list by double quote when multiple entries passed.", default=LicenseUtil.PROTECTED_LICENSES)
     args = parser.parse_args()
     license_util = LicenseUtil()
     dict_licenses = license_util.software_license(args.pkg_names)
@@ -55,7 +57,7 @@ if __name__ == "__main__":
         dict_licenses, args.pkg_names, prefix_outfile=args.prefix_outfile)
     print("Path of the output file: {}".format(path_licenses))
     if args.path_licenses_prev:
-        ret = license_util.compare_license(path_licenses, args.path_licenses_prev)
+        ret = license_util.compare_license(path_licenses, args.path_licenses_prev, args.licenses_alert)
         if not ret:
             logging.error("New license found. Exiting with 1.")
             sys.exit(1)
