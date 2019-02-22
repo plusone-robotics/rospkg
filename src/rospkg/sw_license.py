@@ -33,6 +33,8 @@
 
 from collections import defaultdict, OrderedDict
 import logging
+import os
+import statvfs
 import yaml
 
 from rospkg import ResourceNotFound, RosPack
@@ -169,6 +171,7 @@ class LicenseUtil(object):
                        depending on the prefix_outfile)
         @raise ResourceNotFound
         """
+        SAVE_FILENAME_ROOT_DEFAULT = "detection"
         pkg_version = "pkgversion"
 
         if isinstance(pkgnames, basestring):
@@ -192,6 +195,10 @@ class LicenseUtil(object):
         pkgnames_versions_str = "_".join(pkgnames_versions)
 
         path_outputfile = '{}-{}.yml'.format(prefix_outfile, pkgnames_versions_str)
+        filelength_max = os.statvfs('/tmp')[statvfs.F_NAMEMAX]  # TODO this needs to take arg, not /tmp hardcoded.
+        if filelength_max < len(path_outputfile):
+            logging.warning("File name {} too long for the file system. Saving into '{}' instead.".format(path_outputfile, SAVE_FILENAME_ROOT_DEFAULT))
+            path_outputfile = '{}-{}.yml'.format(prefix_outfile, SAVE_FILENAME_ROOT_DEFAULT)
         with open(path_outputfile, 'w') as outfile:
             outfile.write("{}\n".format(output_header))
             yaml.dump(licenses, outfile, default_flow_style=False, allow_unicode=True)
