@@ -71,7 +71,7 @@ def print_without_newline(argtext):
     print(argtext, end='')
 
 
-def rosversion(package_name):
+def pkg_version(package_name, ros_path=None):
     """
     @summary: Return the version info in the manifest of the given package.
     @rtype: str
@@ -82,7 +82,7 @@ def rosversion(package_name):
     except ResourceNotFound as e:
         try:
             # hack to make it work with wet packages
-            mm = ManifestManager(PACKAGE_FILE)
+            mm = ManifestManager(PACKAGE_FILE, ros_path)
             path = mm.get_path(package_name)
             package_manifest = os.path.join(path, 'package.xml')
             if os.path.exists(package_manifest):
@@ -131,5 +131,5 @@ def main():
         printer(distro_name)
         sys.exit(0)
 
-    version = rosversion(args.package)
+    version = pkg_version(args.package)
     printer(version)

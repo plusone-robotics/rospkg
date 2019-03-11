@@ -58,3 +58,8 @@ def test_get_manifest():
     manager = rospkg.rospack.ManifestManager(rospkg.common.MANIFEST_FILE, ros_paths=[search_path])
     manif = manager.get_manifest("foo")
     assert(manif.type == "package")
+
+
+def test_rosversion():
+    search_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'catkin_package_tests'))
+    assert(rospkg.rosversion.pkg_version(package_name="foo", ros_path=search_path) == "1.2.3")
