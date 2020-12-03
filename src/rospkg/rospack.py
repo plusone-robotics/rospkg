@@ -430,7 +430,7 @@ class RosPack(ManifestManager):
             else:
                 d = os.path.dirname(d)
 
-    def get_licenses(self, pkg_name, implicit=True):
+    def get_licenses(self, pkg_name, implicit=True,  sortbylicense=True):
         """
         @summary: Return a list of licenses and the packages in the dependency tree
             for the given package. Special value 'license_not_found' is used as the license for the
@@ -446,17 +446,14 @@ class RosPack(ManifestManager):
 
         for p_name, manifest in self._manifests.items():
             for license in manifest.licenses:
-                license_dict[license].append(p_name)
-
-        for pkg_name, manifest in manifests.items():
-            if not sortbylicense:
-                license_dict[pkg_name].append(manifest.license)
-            else:
-                license_dict[manifest.license].append(pkg_name)
+                if not sortbylicense:
+                    license_dict[license].append(p_name)
+                else:
+                    license_dict[manifest.license].append(pkg_name)
 
         # Traverse for Non-ROS, system packages
         try:
-            pkgnames_rosdep = self.get_rosdeps(name, implicit)
+            pkgnames_rosdep = self.get_rosdeps(pkg_name, implicit)
         except ResourceNotFound as e:
             raise e
         if platform.linux_distribution()[0] == "Ubuntu":
@@ -466,7 +463,7 @@ class RosPack(ManifestManager):
                 if syspkg_dict:
                     license_syspkg = syspkg_dict[0]["manifest"].license
                 else:
-                    license_syspkg = MSG_LICENSE_NOTFOUND_SYSPKG
+                    license_syspkg = self.LICENSE_NOT_FOUND
                 if not sortbylicense:
                     license_dict[pkgname_rosdep].append(license_syspkg)
                 else:
